@@ -24,18 +24,19 @@ config['denovo'] = {'topk' : False,
 
 
 config['diamond tally'] = {'diamond_folder' : 'Kaiko_volume/Kaiko_stationary_files/diamond',
-                           'ncbi_taxa_folder' : "Kaiko_volume/Kaiko_stationary_files/ncbi_taxa",
+                           'ncbi_taxa_folder' : 'E:/Kaiko_stationary_files/ncbi_taxa',
                            'mode' : 'member',
                           #  'fout' : 'Kaiko_volume/Kaiko_intermediate/kaiko_prediction_top_taxa.csv',
                           #  'diamond_output' : "Kaiko_volume/Kaiko_intermediate/denovo_output/diamond_search_output.dmd",
-                           'diamond_database' : "Kaiko_volume/Kaiko_stationary_files/uniref100",
-                           'n_protein_cutoff' : 300000,
+                           'diamond_database' : 'E:/Kaiko_stationary_files/Reference_Proteomes/reference_proteomes_db',
+                          ## Not important when using ref proteomes (default)
+                           'n_protein_cutoff' : 3000000,
                            'cached' : False,
-                           'db_pattern' : 'TaxID',
+                           'db_pattern' : 'OX',
                            'benchmark' : []}
 
 
-config['taxa to fasta'] = {'ref_fasta' : "Kaiko_volume/Kaiko_stationary_files/uniref100.fasta.gz",
+config['taxa to fasta'] = {'ref_fasta' : 'C:/Kaiko_stationary_files/Reference_Proteomes',
                           #  'diamond_tally' : "Kaiko_volume/Kaiko_intermediate/kaiko_prediction_top_taxa.csv",
                           #  'fout' : "Kaiko_volume/Kaiko_output/kaiko_output.fasta",
                            'gz_index' : 'Kaiko_volume/Kaiko_stationary_files/uniref100_fasta_gzindex.gzidx',
@@ -45,7 +46,10 @@ config['taxa to fasta'] = {'ref_fasta' : "Kaiko_volume/Kaiko_stationary_files/un
                            'coverage_target' : 0.48,
                            'top_strains' : 1,
                            'taxa_key' : "TaxID",
-                           'kingdom_list' : ""}
+                           'kingdom_list' : "",
+                          # Always output the primary accession and the ID of the entry. These others are optional, but by default included.
+                           'annotation_cats' : ['GO', 'KEGG', 'Reactome', 'verstion_date', 'version', 'gene_name', 'description']
+                           }
 
 # with open('kaiko_defaults.ini', 'w') as configfile:
 #   config.write(configfile)

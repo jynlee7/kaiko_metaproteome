@@ -1,54 +1,28 @@
-import pyodbc 
-import pandas as pd
+### python mzml2kaiko.py --mzml_dir mint/ --out_dir mint/
+
+from pyteomics import mzml,auxiliary
 import time
 import gzip
 import glob
 import os
 import sys
+
 import argparse
 
-from pathlib import PureWindowsPath, Path
-from pyteomics import mzml, auxiliary
+########################################################
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    '--mzml_dir', type=str,
+    help='mzML directory')
+parser.add_argument(
+    '--out_dir', type=str,
+    help='output directory')
+parser.add_argument(
+    '--gz', action='store_true',
+    help='mzML.gz?')
 
-def get_request_dataset_paths(job_req_id):
-    cnxn = pyodbc.connect("DRIVER={SQL Server};SERVER=gigasax;DATABASE=dms5;")
-    # cnxn = pyodbc.connect(f"DRIVER={pyodbc.drivers()[0]};SERVER=gigasax;DATABASE=dms5;")
-    sql_str_job_req = f"SELECT * FROM v_analysis_job_request_detail_report WHERE [request]={job_req_id}"
-    datasets_df = pd.read_sql(sql_str_job_req, cnxn)
-
-    datasets = datasets_df.datasets.to_list()[0].split(', ')
-    # sql_str_dataset = f"SELECT * FROM v_dataset_detail_report_ex WHERE [dataset] = '{datasets[0]}'"
-    # results_path = pd.read_sql(sql_str_dataset, cnxn).dataset_folder_path.to_list()[0].split(': ')[-1]
-    # results_folder = Path(PureWindowsPath(results_path)).parent
-
-    mzml_paths = []
-    for dataset in datasets:
-        sql_str_dataset = f"SELECT * FROM v_dataset_detail_report_ex WHERE [dataset] = '{dataset}'"
-        results_path = pd.read_sql(sql_str_dataset, cnxn).dataset_folder_path.to_list()[0].split(': ')[-1]
-        # results_folder = Path(PureWindowsPath(results_path)).parent
-        # results_path = results_folder / dataset 
-        results_path = Path(PureWindowsPath(results_path))
-        assert results_path.exists()
-
-        mzml_results_pointer = [x for x in results_path.glob('MSXML*')]
-        assert len(mzml_results_pointer) == 1
-
-        mzml_results_pointer = [x for x in mzml_results_pointer[0].glob(f'{dataset}*')]
-        assert len(mzml_results_pointer) == 1
-
-        with mzml_results_pointer[0].open('r') as mzml_pointer:
-            mzml_path = mzml_pointer.readline()
-            mzml_path = mzml_path.split('\n')[0]
-
-        mzml_path = Path(PureWindowsPath(mzml_path))
-        assert mzml_path.exists()
-
-        mzml_paths = mzml_paths + [mzml_path]
-        ## To not spam DMS if there are too many datasets
-        time.sleep(1)
-
-    return(mzml_paths)
-
+FLAGS = parser.parse_args()
+########################################################
 
 def inspect_mzML_file(fpath, gzipped=True):
     spectra = []
@@ -60,6 +34,12 @@ def inspect_mzML_file(fpath, gzipped=True):
         spectra.append(obj)
     if gzipped: f.close()
     return spectra
+
+# start_time = time.time()
+
+# spectra = inspect_mzML_file('mint/MinT_frac_Kans_2D_01_01_2D_27Feb17_Tiger_16-09-25.mzML', False)
+# end_time = time.time()
+# print('Num:{0}, time:{1}'.format(len(spectra), end_time-start_time))
 
 def generate_mgf_without_annotation(mzml_spectra, file_index=0, ntops=500, out_file='out.mgf'):
     num_spectra = 0
@@ -98,19 +78,13 @@ def generate_mgf_without_annotation(mzml_spectra, file_index=0, ntops=500, out_f
                     
         return num_spectra
 
-def generate_mgf_files(data_dir, dest_dir = './', dataset_pattern = '', gzipped = True):
+def generate_mgf_files(data_dir, dest_dir='./', gzipped=True):
     # collect mzML.gz files
-    if dataset_pattern != '':
-        if gzipped:
-            mzML_files = glob.glob(data_dir + f"/{dataset_pattern}")
-        else:
-            mzML_files = glob.glob(data_dir + f"/{dataset_pattern}")
+    if gzipped:
+        mzML_files = glob.glob(data_dir + "/*.mzML.gz")
     else:
-        if gzipped:
-            mzML_files = glob.glob(data_dir + "/*.mzML.gz")
-        else:
-            mzML_files = glob.glob(data_dir + "/*.mzML")
-        
+        mzML_files = glob.glob(data_dir + "/*.mzML")
+    
     if not os.path.exists(dest_dir):
         os.makedirs(dest_dir)
 
@@ -133,13 +107,31 @@ def generate_mgf_files(data_dir, dest_dir = './', dataset_pattern = '', gzipped 
                               num_mzML_files,
                               common_name))
                 continue
-
+                
+        
+            seq_file = glob.glob(data_dir + '/' + common_name + "*.txt")
+            msg = ""
+            scan_ids = []
             num_spectra = 0
             mzml_spectra = inspect_mzML_file(mzML_file, gzipped)
-            num_spectra = generate_mgf_without_annotation(mzml_spectra,
-                                                            file_index=f'{dataset_pattern}--{i}',
-                                                            out_file=dest_dir + '/' + common_name + '.mgf')
-            num_scans = num_spectra
+            
+            if len(seq_file) == 1:    
+                annotated = get_annotated_pepseq(seq_file[0])
+                scan_ids = list(annotated.Scan)
+                pepseqs = list(annotated.pepseq)
+                charges = list(annotated.Charge)
+                num_scans = len(scan_ids)
+                num_spectra = generate_mgf(mzml_spectra,
+                                           scan_ids,
+                                           pepseqs,
+                                           charges,
+                                           file_index = i,
+                                           out_file=dest_dir + '/' + common_name + '.mgf')
+            else:
+                num_spectra = generate_mgf_without_annotation(mzml_spectra,
+                                                              file_index=i,
+                                                              out_file=dest_dir + '/' + common_name + '.mgf')
+                num_scans = num_spectra
             total_scans += num_spectra
             msg = "SUCCESS"
             print('[{0:3d}/{1:3d}] {2}, {3:d}/{4:d}/{5:d}, {6:.2f}sec' \
@@ -155,5 +147,7 @@ def generate_mgf_files(data_dir, dest_dir = './', dataset_pattern = '', gzipped 
         except Exception as e:
             print('[ERR] {}'.format(mzML_file))
             print('[ERR]', e)
+        
 
-
+if __name__ == "__main__":
+    generate_mgf_files(FLAGS.mzml_dir, FLAGS.out_dir, FLAGS.gz)

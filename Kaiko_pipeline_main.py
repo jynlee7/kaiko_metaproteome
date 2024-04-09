@@ -11,7 +11,7 @@ from s3path import S3Path
 from Kaiko_4 import aggregate_fasta
 from Kaiko_3 import run_diamond_tally
 from Kaiko_2 import prepare_denovo_command, combine_denovo_output
-from Kaiko_dms_functions import get_request_dataset_paths, generate_mgf_files
+# from Kaiko_dms_functions import get_request_dataset_paths, generate_mgf_files
 
 parser = argparse.ArgumentParser()
 
@@ -66,38 +66,39 @@ if not config['denovo']['cached']:
     all_mgf = []
     
     if config['denovo']['dms_analysis_job'] != '':
-        print('Gathering paths from dms')
-        mzml_paths = get_request_dataset_paths(config['denovo']['dms_analysis_job'])
-        for mzml_path in mzml_paths:
-            individual_mgf_name = str(mzml_path.name).split('.mzML.gz')[0]
-            all_mgf = all_mgf + [f'{individual_mgf_name}.mgf']
-            expected_output_path = denovout_dir / f'{individual_mgf_name}_out.txt'
-            individual_mgf_dir = mgf_dir / individual_mgf_name
+        print('dms access from docker not implemented')
+        # print('Gathering paths from dms')
+        # mzml_paths = get_request_dataset_paths(config['denovo']['dms_analysis_job'])
+        # for mzml_path in mzml_paths:
+        #     individual_mgf_name = str(mzml_path.name).split('.mzML.gz')[0]
+        #     all_mgf = all_mgf + [f'{individual_mgf_name}.mgf']
+        #     expected_output_path = denovout_dir / f'{individual_mgf_name}_out.txt'
+        #     individual_mgf_dir = mgf_dir / individual_mgf_name
             
-            ## If denovo is done, don't need to do it again
-            if not expected_output_path.exists():
-                ## If another process already started working on this dataset, skip.
-                if not individual_mgf_dir.exists():
-                    print(f'Converting file {str(mzml_path.name)}')
-                    generate_mgf_files(str(mzml_path.parent), dest_dir = str(individual_mgf_dir.resolve()), dataset_pattern = str(mzml_path.name), gzipped = True)
+        #     ## If denovo is done, don't need to do it again
+        #     if not expected_output_path.exists():
+        #         ## If another process already started working on this dataset, skip.
+        #         if not individual_mgf_dir.exists():
+        #             print(f'Converting file {str(mzml_path.name)}')
+        #             generate_mgf_files(str(mzml_path.parent), dest_dir = str(individual_mgf_dir.resolve()), dataset_pattern = str(mzml_path.name), gzipped = True)
 
-                    kaiko_1_args = prepare_denovo_command(individual_mgf_dir, denovout_dir, config)
-                    print(" ".join(kaiko_1_args) + "\n")
-                    subprocess.run(kaiko_1_args, cwd = "Kaiko_denovo")
+        #             kaiko_1_args = prepare_denovo_command(individual_mgf_dir, denovout_dir, config)
+        #             print(" ".join(kaiko_1_args) + "\n")
+        #             subprocess.run(kaiko_1_args, cwd = "Kaiko_denovo")
 
-                    with denovo_completion_log.open('a') as completion_log:
-                        completion_log.write(f'{individual_mgf_name}.mgf\t{expected_output_path.name}\t completed denovo sequencing\n')
+        #             with denovo_completion_log.open('a') as completion_log:
+        #                 completion_log.write(f'{individual_mgf_name}.mgf\t{expected_output_path.name}\t completed denovo sequencing\n')
 
-                    if not config['denovo']['keep_dms_locally']:
-                        print(f'Removing the locally stored coverted spectra {str(individual_mgf_dir)}.mgf')
-                        try:
-                            os.remove(individual_mgf_dir / f'{str(individual_mgf_name)}.mgf')
-                        except:
-                            print('woops')
-                else:
-                    print(f'{str(individual_mgf_dir)} already exists, another process is working on this dataset. Moving onto the next dataset')
-            else:
-                print(f'{str(expected_output_path.name)} already exists. Moving onto the next dataset')
+        #             if not config['denovo']['keep_dms_locally']:
+        #                 print(f'Removing the locally stored coverted spectra {str(individual_mgf_dir)}.mgf')
+        #                 try:
+        #                     os.remove(individual_mgf_dir / f'{str(individual_mgf_name)}.mgf')
+        #                 except:
+        #                     print('woops')
+        #         else:
+        #             print(f'{str(individual_mgf_dir)} already exists, another process is working on this dataset. Moving onto the next dataset')
+        #     else:
+        #         print(f'{str(expected_output_path.name)} already exists. Moving onto the next dataset')
     else:
         mgf_files = [x for x in mgf_dir.glob('*.mgf')]
         for mgf_file in mgf_files:
@@ -173,7 +174,7 @@ if not config['diamond tally']['cached']:
     os.system(" ".join(diamond_args))
     os.chdir(working_dir)
 
-species_tally_path = intermediate_dir / (prefix + f'_top_taxa_nprot_{nprot}_top_{top_strains}_strains_{db_name}{suffix}.xlsx')
+species_tally_path = intermediate_dir / (prefix + f'_{db_name}{suffix}.xlsx')
 detailed_fout = intermediate_dir / f'{prefix}_{db_name}_detailed.csv'
 # Step 4. Tallying the diamond results
 run_diamond_tally(diamond_search_out, 
@@ -195,16 +196,19 @@ else:
     kingdom_list = []
 
 coverage_target = str(config['taxa to fasta']['coverage_target'])
-kaiko_final_output = final_dir / (prefix + f'_kaiko_fasta_coverage_{coverage_target}_nprot_{nprot}_top{top_strains}_strains.fasta')
+output_fasta_path = final_dir / (prefix + f'_kaiko_fasta_coverage_{coverage_target}.fasta')
+output_annotation_path = final_dir / (prefix + f'_kaiko_fasta_coverage_{coverage_target}_annotations.JSON')
 
 aggregate_fasta(ref_fasta,
                 ref_proteome_log,
                 species_tally_path,
-                kaiko_final_output,
+                output_fasta_path, output_annotation_path,
                 config['taxa to fasta']['coverage_target'],
                 int(config['taxa to fasta']['top_strains']),
                 ref_fasta_igzip_index, index_path, index_s_path,
                 kingdom_list, mode)
+
+# aggregate_annotations()
 
 
 if (config['denovo'])['profile']:

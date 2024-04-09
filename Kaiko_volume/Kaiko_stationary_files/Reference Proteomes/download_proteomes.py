@@ -10,6 +10,7 @@ from pathlib import PureWindowsPath, Path
 
 ## Add flag for this
 referece_proteomes_table_path = Path(PureWindowsPath('proteomes_AND_proteome_type_1_2023_11_28.tsv'))
+# referece_proteomes_table_path_2 = Path(PureWindowsPath('proteomes_AND_proteome_type_1_2024_04_07.tsv'))
 proteome_table = pd.read_csv(referece_proteomes_table_path, sep = "\t")
 proteome_table = proteome_table.set_index('Organism Id')
 
@@ -20,7 +21,7 @@ rest_uniprot_pattern_compressed = 'https://rest.uniprot.org/uniprotkb/stream?com
 rest_uniprot_pattern_uncompressed = 'https://rest.uniprot.org/uniprotkb/stream?compressed=false&format=fasta&query=%28%28proteome%3A'
 
 
-def download_proteome(taxa_id, rest_uniprot_pattern):
+def download_proteome(taxa_id, rest_uniprot_pattern = rest_uniprot_pattern_uncompressed):
     proteome_id = proteome_table.loc[taxa_id]['Proteome Id']
     download_proteome_by_id(proteome_id, rest_uniprot_pattern, suffix = f'_taxaid_{taxa_id}')
 
@@ -35,6 +36,7 @@ def download_proteome_by_id(proteome_id, rest_uniprot_pattern, suffix = ''):
             if chunk:
                 f.write(chunk)
         print(time.time()-start_time)
+    return f'{proteome_id}{suffix}.fasta'
     
 
 def log_proteomes(taxa_ids, dates, proteome_paths, log_file):
