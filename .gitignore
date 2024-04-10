@@ -18,6 +18,7 @@ Kaiko_volume/Kaiko_output/*
 /Kaiko_old
 /Dockerfile-py27
 /random txt files/*
+/mgf/*
 Kaiko_volume/Kaiko_stationary_files/unit_test_correct_output
 
 !Kaiko_volume/Kaiko_intermediate/denovo_output/README.txt
