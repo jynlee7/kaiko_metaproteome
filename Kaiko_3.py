@@ -45,7 +45,7 @@ def run_diamond_tally(diamond_output, n_strain_select, ncbi_taxa_folder, mode, f
         print("Filtering by quality and taxa...")
         filtered_dmd = dmd_filter(dmd, filterby=filterby)
         filtered_dmd = collect_taxid(filtered_dmd, db_pattern)
-        filtered_dmd['uniref_id'] = [i[0] for i in filtered_dmd.uniref_seq.str.split(" ",1)]
+        filtered_dmd['uniref_id'] = [i[0] for i in filtered_dmd.uniref_seq.str.split(" ", n = 1)]
 
         ############################################################
         # garbage collection
@@ -124,11 +124,11 @@ def run_diamond_tally(diamond_output, n_strain_select, ncbi_taxa_folder, mode, f
         for pident, df in zip(benchmark, all_sheets):
             df.to_excel(writer, sheet_name = f'pident at least {pident} percent')
 
-        writer.save()
+        writer.close()
     else:
         df.to_excel(writer, sheet_name = f'pident at least {100} percent')
         
-        writer.save()
+        writer.close()
 
 def find_smaller_taxa(df, pepcount_taxid, _n_strain_select, index):
     tax_ranks = ['species', 'genus', 'family', 'order', 'class', 'phylum', 'kingdom', 'superkingdom']

@@ -12,4 +12,4 @@ ADD ./unit_test_util.py /Kaiko_pipeline
 ADD ./kaiko_defaults.yaml /Kaiko_pipeline
 
 RUN pip install --no-cache-dir --upgrade pip && \ 
-    pip install --no-cache-dir indexed_gzip==1.8.5 llvmlite==0.39.1 biopython==1.81 numba==0.56.4 pyteomics sigopt==3.2.0 memory-profiler pyyaml pathlib s3path pyodbc
+    pip install --no-cache-dir indexed_gzip==1.8.5 llvmlite==0.39.1 biopython==1.81 numba==0.56.4 pyteomics sigopt==3.2.0 memory-profiler pyyaml pathlib s3path pyodbc openpyxl xlsxwriter
