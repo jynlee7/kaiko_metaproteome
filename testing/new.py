@@ -1,7 +1,7 @@
 from pyteomics import mgf
 import pandas as pd
 import re
-import os
+# import os
 
 mgf_file_path = "/Users/leej741/Desktop/validation_set/testing/01_ECTABPP_NP_1_9Jan17_Wally_17-12-02.mzML_0.001_qvaluecutoff.mgf"
 mgf_file_name = re.sub(r'^.*/|\.mgf$', '', mgf_file_path)
@@ -12,21 +12,35 @@ def check_mgf_files_in_tsv(mgf_file_name, tsv_file_path):
     tsv_data = pd.read_csv(tsv_file_path, sep='\t')
     return tsv_data[tsv_data['mgf'].str.contains(mgf_file_name, na=False)]
 
+def modify_sequence(sequence):
+    if isinstance(sequence, float) and pd.isna(sequence):
+        print(f"Skipping modification for NaN sequence: {sequence}")
+        return ''
+    
+    pattern = r'\+\d+(\.\d+)?'  
+    modified_sequence = re.sub(pattern, '(ox)', sequence)
+    return modified_sequence
+
 def create_new_mgf_with_predicted_sequences(mgf_file_name, tsv_file_path, output_mgf_file_path):
-    # Check and get the matching MGF files
     mgf_matches = check_mgf_files_in_tsv(mgf_file_name, tsv_file_path)
     if mgf_matches.empty:
         print(f"No matching sequences found for {mgf_file_name} in {tsv_file_path}")
         return
     
-    # Convert the matching MGF sequences to a dictionary for quick lookup
     scan_to_sequence = mgf_matches.set_index('scans')['casanovo_seq'].to_dict()
-
-    # Read the original MGF file
+    
     spectra = []
     with mgf.read(mgf_file_path) as reader:
         for spectrum in reader:
-            spectrum['params']['seq'] = scan_to_sequence[int(spectrum['params']['title'])]
+            original_seq = scan_to_sequence.get(int(spectrum['params']['title']), '')
+            if not original_seq:
+                print(f"No sequence found for scan {spectrum['params']['title']}")
+            else:
+                modified_seq = modify_sequence(original_seq)
+                if len(modified_seq) == 0:
+                    print(f"Skipping empty or invalid sequence for scan {spectrum['params']['title']}")
+                    continue
+                spectrum['params']['seq'] = modified_seq
             spectra.append(spectrum)
 
     with open(output_mgf_file_path, 'w') as output_file:
