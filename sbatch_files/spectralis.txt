@@ -1,0 +1,41 @@
+#!/bin/csh
+
+#SBATCH --account emsl61033                     # charged account
+#SBATCH --time 1                              # 30 minute time limit
+#SBATCH --nodes 1                              # 2 nodes
+#SBATCH --gpus 1                               # 1 gpu
+#SBATCH --ntasks-per-node 16                   # 16 processes on each per node
+#SBATCH --job-name test_07150850                 # job name in queue (``squeue``)
+#SBATCH --error test_07150850-%j.err             # stderr file with job_name-job_id.err
+#SBATCH --output test_07150850-%j.out            # stdout file
+#SBATCH --mail-user=jayden.lee@pnnl.gov  # email user
+#SBATCH --mail-type END                        # when job ends
+
+module purge                                   # removes the default module set
+module load intel
+module load impi
+module load python
+module load cuda/11.1.0-intel/19.1.2.254
+
+source /tahoma/emsl61033/spectralis/bin/activate
+python3 -m pip install /home/leej741/spectralis/.
+
+echo
+echo "loaded modules"
+echo
+module list >& _modules.lis_
+cat _modules.lis_
+/bin/rm -f _modules.lis_
+echo
+echo limits
+echo
+limit
+echo
+echo "Environment Variables"
+echo
+printenv
+echo
+echo "ldd output"
+echo
+
+bash /home/leej741/spectralis/run_spectralis.sh
